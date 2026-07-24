@@ -75,16 +75,26 @@ local function padRight(value, width)
   return str
 end
 
+-- Left-pads by display (character) length - the right-aligned counterpart to padRight().
+local function padLeft(value, width)
+  local str = tostring(value or "")
+  local pad = width - displayLength(str)
+  if pad > 0 then
+    return string.rep(" ", pad) .. str
+  end
+  return str
+end
+
 local function field(label, value, width)
   return "  " .. label .. ": " .. padRight(value, width)
 end
 
-local function fixedField(label, value, width)
-  return "  " .. label .. ": " .. string.format("%-" .. width .. "s", tostring(value or ""))
+local function fieldRight(label, value, width)
+  return "  " .. label .. ": " .. padLeft(value, width)
 end
 
-local function fixedFieldRight(label, value, width)
-  return "  " .. label .. ": " .. string.format("%" .. width .. "s", tostring(value or ""))
+local function fixedField(label, value, width)
+  return "  " .. label .. ": " .. string.format("%-" .. width .. "s", tostring(value or ""))
 end
 
 local function extensionSource(ext)
@@ -98,25 +108,33 @@ local function printExtensionList()
 
   local extensions = GetExtensionList()
   local dlcList = {}
+  local dlcIdWidth = 0
   local dlcNameWidth = 0
+  local dlcVersionWidth = 0
   local dlcLocationWidth = 0
   local modList = {}
+  local modIdWidth = 0
   local modNameWidth = 0
   local modAuthorWidth = 0
-  local modLocationWidth = 0
   local modSourceWidth = 0
+  local modVersionWidth = 0
+  local modLocationWidth = 0
   for _, ext in ipairs(extensions) do
     if ext.enabled then
       if ext.egosoftextension and ext.enabledbydefault then
         dlcList[#dlcList + 1] = ext
+        dlcIdWidth = trackLength(dlcIdWidth, ext.id)
         dlcNameWidth = trackLength(dlcNameWidth, ext.name)
+        dlcVersionWidth = trackLength(dlcVersionWidth, formatVersion(ext.version))
         dlcLocationWidth = trackLength(dlcLocationWidth, ext.location)
       else
         modList[#modList + 1] = ext
+        modIdWidth = trackLength(modIdWidth, ext.id)
         modNameWidth = trackLength(modNameWidth, ext.name)
         modAuthorWidth = trackLength(modAuthorWidth, ext.author)
-        modLocationWidth = trackLength(modLocationWidth, ext.location)
         modSourceWidth = trackLength(modSourceWidth, extensionSource(ext))
+        modVersionWidth = trackLength(modVersionWidth, formatVersion(ext.version))
+        modLocationWidth = trackLength(modLocationWidth, ext.location)
       end
     end
   end
@@ -124,9 +142,9 @@ local function printExtensionList()
   lines[#lines + 1] = "=== Enabled DLCs (" .. #dlcList .. ") ==="
   for _, dlc in ipairs(dlcList) do
     lines[#lines + 1] =
-        fixedField("id", dlc.id, 30) ..
+        field("id", dlc.id, dlcIdWidth) ..
         field("name", dlc.name, dlcNameWidth) ..
-        fixedFieldRight("version", formatVersion(dlc.version), 10) ..
+        fieldRight("version", formatVersion(dlc.version), dlcVersionWidth) ..
         fixedField("date", dlc.date, 10) ..
         field("location", dlc.location, dlcLocationWidth) ..
         fixedField("personal", boolText(dlc.personal), 5) ..
@@ -139,11 +157,11 @@ local function printExtensionList()
   for _, mod in ipairs(modList) do
     local source = extensionSource(mod)
     lines[#lines + 1] =
-        fixedField("id", mod.id, 30) ..
+        field("id", mod.id, modIdWidth) ..
         field("name", mod.name, modNameWidth) ..
         field("author", mod.author, modAuthorWidth) ..
         field("source", source, modSourceWidth) ..
-        fixedFieldRight("version", formatVersion(mod.version), 10) ..
+        fieldRight("version", formatVersion(mod.version), modVersionWidth) ..
         fixedField("date", mod.date, 10) ..
         field("location", mod.location, modLocationWidth) ..
         fixedField("personal", boolText(mod.personal), 5) ..
