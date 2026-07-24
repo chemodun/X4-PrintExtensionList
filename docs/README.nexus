@@ -1,0 +1,48 @@
+[size=4][u]Print Extension List[/u][/size]
+
+[size=3][u][b]Features[/b][/u][/size]
+[list]
+[*] On UI startup, writes a report to the debug log containing:
+[list]
+[*] Game version and build suffix.
+[*] Every enabled DLC (id, name, version, date).
+[*] Every enabled extension/mod (id, name, author, source, version, date).
+[/list]
+[/list]
+[size=3][u][b]Limitations[/b][/u][/size]
+[list]
+[*] Debug-log only; there is no in-game UI, menu, or notification.
+[*] No configuration - it always logs once per UI load.
+[*] Oriented for mod developers to distribute with their mods, so that users can easily report their mod list to the developer inside the debug log.
+[/list]
+[size=3][u][b]Requirements[/b][/u][/size]
+[list]
+[*] [b]X4: Foundations[/b] 8.00 or newer.
+[/list]
+[size=3][u][b]Installation[/b][/u][/size]
+
+You can download the latest version via Steam client - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=]Print Extension List[/url]
+Or you can do it via the Nexus Mods - [url=https://www.nexusmods.com/x4foundations/mods/]Print Extension List[/url]
+
+[size=3][u][b]Usage[/b][/u][/size]
+
+Install and enable the extension. On the next game start look in the debug log for lines starting with prefix `PrintExtensionList:`.
+
+[size=3][u][b]Credits[/b][/u][/size]
+[list]
+[*] Author: Chem O`Dun, on [url=https://next.nexusmods.com/profile/ChemODun/mods?gameId=2659]Nexus Mods[/url] and [url=https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160]Steam Workshop[/url]
+[*] [i]"X4: Foundations"[/i] is a trademark of [url=https://www.egosoft.com]Egosoft[/url].
+[/list]
+[size=3][u][b]Acknowledgements[/b][/u][/size]
+[list]
+[*] [url=https://www.egosoft.com]EGOSOFT[/url] - for the X series.
+[/list]
+[size=3][u][b]Changelog[/b][/u][/size]
+
+[size=3][u][i][1.00] - 2026-07-24[/i][/u][/size]
+[list]
+[*] Added
+[list]
+[*] Initial public version
+[/list]
+[/list]
