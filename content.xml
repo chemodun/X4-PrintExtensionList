@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <content
-  id=""
+  id="ws_3697064149"
   name="Print Extension List"
   author="Chem O`Dun"
   version="100"
@@ -8,6 +8,7 @@
   save="false"
   sync="false"
   enabled="true"
+  lastupdate="1777152979"
   description="Logs the game version, build number, and list of enabled DLCs/extensions with versions to the debug log on startup.">
   <dependency version="800"></dependency>
 </content>
