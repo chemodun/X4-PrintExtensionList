@@ -2,6 +2,7 @@
 
 [size=3][u][b]Features[/b][/u][/size]
 [list]
+[*] Mod developers can include this as a dependency, allowing users to easily export their mod list to the debug log.
 [*] On UI startup, writes a report to the debug log containing:
 [list]
 [*] Game version.
@@ -11,7 +12,6 @@
 [/list]
 [size=3][u][b]Limitations[/b][/u][/size]
 [list]
-[*] Oriented for mod developers to distribute with their mods, so that users can easily report their mod list to the developer inside the debug log.
 [*] Debug-log only; there is no in-game UI, menu, or notification.
 [*] No configuration - it always logs once per UI load.
 [/list]
@@ -20,10 +20,10 @@
 [*] [b]X4: Foundations[/b] 8.00 or newer.
 [/list]
 [size=3][u][b]Installation[/b][/u][/size]
-
-You can download the latest version via Steam client - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339]Print Extension List[/url]
-Or you can do it via the Nexus Mods - [url=https://www.nexusmods.com/x4foundations/mods/2191]Print Extension List[/url]
-
+[list]
+[*] [b]Steam Workshop[/b] - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339]Print Extension List[/url]
+[*] [b]Nexus Mods[/b] - [url=https://www.nexusmods.com/x4foundations/mods/2191]Print Extension List[/url]
+[/list]
 [size=3][u][b]Usage[/b][/u][/size]
 
 Install and enable the extension. On the next game start look in the debug log for lines starting with prefix `PrintExtensionList:`.
