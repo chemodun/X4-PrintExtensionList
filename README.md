@@ -19,7 +19,7 @@
 
 ## Installation
 
-You can download the latest version via Steam client - [Print Extension List](https://steamcommunity.com/sharedfiles/filedetails/?id=)
+You can download the latest version via Steam client - [Print Extension List](https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339)
 Or you can do it via the Nexus Mods - [Print Extension List](https://www.nexusmods.com/x4foundations/mods/2191)
 
 ## Usage
