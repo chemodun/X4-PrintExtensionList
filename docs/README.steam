@@ -6,6 +6,7 @@
 [*] On UI startup, writes a report to the debug log containing:
 [list]
 [*] Game version.
+[*] Current screen resolution and the UI settings that affect menu layout: UI scale and menu width options, the engine UI scale values, and the Helper view size, [b]uiScale[/b] and `scaleX`/`scaleY` results.
 [*] Every enabled DLC (id, name, version, date, location and other fields).
 [*] Every enabled extension/mod (id, name, author, source, version, date, location and other fields).
 [/list]
@@ -39,6 +40,14 @@ Install and enable the extension. On the next game start look in the debug log f
 [/list]
 [h2][b]Changelog[/b][/h2]
 
+[h2][1.01] - 2026-07-31[/h2]
+[list]
+[*] Added
+[list]
+[*] Current screen resolution to the [b]Game Data[/b] section of the report.
+[*] UI related settings to the [b]Game Data[/b] section: UI scale option, menu width option, both [b]GetUIScale()[/b] variants, Helper view width/height, Helper `uiScale`, and the `Helper.scaleX()`/`Helper.scaleY()` results for a 100 pixel reference value.
+[/list]
+[/list]
 [h2][1.00] - 2026-07-24[/h2]
 [list]
 [*] Added
