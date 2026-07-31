@@ -1,11 +1,21 @@
 -- Print Extension List (print_extension_list)
--- Logs the game version, build, and the list of enabled DLCs/extensions with their versions
--- to the debug log once, when the UI environment loads.
+-- Logs the game version, the current resolution/UI settings, and the list of enabled
+-- DLCs/extensions with their versions to the debug log once, when the UI environment loads.
 -- Compatible with X4 8.00+.
 
 local ffi = require("ffi")
 local C   = ffi.C
 local utf8 = require("utf8")
+
+-- Declared one at a time on purpose: another addon may already have declared any of these,
+-- and a duplicate must not take the remaining declarations of a shared block down with it.
+for _, declaration in ipairs({
+  "float GetUIScale(const bool scalewithresolution);",
+  "float GetUIScaleFactor(void);",
+  "float GetMenuWidthScale(void);",
+}) do
+  pcall(ffi.cdef, declaration)
+end
 
 -- Splits a pure-digit string into 2-digit groups counted from the right, leftmost group 1-2 digits.
 local function splitDigitsIntoGroups(digits)
@@ -101,10 +111,95 @@ local function extensionSource(ext)
   return ext.egosoftextension and "ego" or (ext.isworkshop and "workshop" or (ext.personal and "personal" or "local"))
 end
 
+-- Calls an engine binding defensively: a missing global, an FFI symbol the running build
+-- doesn't export, or an error inside the call degrades a single report line to "n/a"
+-- instead of aborting the whole report.
+local function safeCall(func, ...)
+  if type(func) ~= "function" then
+    return nil
+  end
+  local ok, result = pcall(func, ...)
+  if ok then
+    return result
+  end
+  return nil
+end
+
+-- ffi.C raises on an undeclared/unresolvable symbol, so even the lookup has to be guarded.
+-- Takes at most one argument - none of the bindings used here need more.
+local function safeEngineCall(name, value)
+  local ok, result = pcall(function()
+    if value == nil then
+      return C[name]()
+    end
+    return C[name](value)
+  end)
+  if ok then
+    return result
+  end
+  return nil
+end
+
+local function numberText(value, digits)
+  local number = tonumber(value)
+  if number == nil then
+    return "n/a"
+  end
+  return string.format("%." .. (digits or 2) .. "f", number)
+end
+
+local function sizeText(width, height)
+  if width == nil or height == nil then
+    return "n/a"
+  end
+  return tostring(width) .. " x " .. tostring(height)
+end
+
+-- One "label: value" row of the header section, printed later with a shared label width.
+local function addSetting(rows, label, value)
+  rows[#rows + 1] = { label = label, value = (value == nil) and "n/a" or tostring(value) }
+end
+
+-- Game version plus the resolution and UI settings that change how every menu is laid out -
+-- the values needed to make sense of a UI bug report (misplaced/clipped widgets, unreadable
+-- text) without asking the reporter to dig through the options menus.
+local function gameDataRows()
+  local rows = {}
+  addSetting(rows, "Version", GetVersionString())
+
+  local resolution = safeCall(GetResolutionOption)
+  addSetting(rows, "Resolution", resolution and sizeText(resolution.width, resolution.height))
+
+  addSetting(rows, "UI scale (option)", numberText(safeEngineCall("GetUIScaleFactor")))
+  addSetting(rows, "Menu width (option)", numberText(safeEngineCall("GetMenuWidthScale")))
+  addSetting(rows, "GetUIScale(false)", numberText(safeEngineCall("GetUIScale", false)))
+  addSetting(rows, "GetUIScale(true)", numberText(safeEngineCall("GetUIScale", true)))
+
+  -- Helper is loaded before this file (ui.xml depends on ego_detailmonitor), but a stripped
+  -- or reordered setup shouldn't turn the report into an error message.
+  local helper = Helper
+  addSetting(rows, "Helper view size", helper and sizeText(helper.viewWidth, helper.viewHeight))
+  addSetting(rows, "Helper uiScale", numberText(helper and helper.uiScale))
+
+  local scaledX = helper and safeCall(helper.scaleX, 100)
+  local scaledY = helper and safeCall(helper.scaleY, 100)
+  local scaleText = (scaledX and scaledY) and (tostring(scaledX) .. " / " .. tostring(scaledY)) or nil
+  addSetting(rows, "Helper scaleX / scaleY (of 100)", scaleText)
+
+  return rows
+end
+
 local function printExtensionList()
   local lines = {}
   lines[#lines + 1] = "=== Game Data ==="
-  lines[#lines + 1] = "Version: " .. GetVersionString()
+  local settingRows = gameDataRows()
+  local settingLabelWidth = 0
+  for _, row in ipairs(settingRows) do
+    settingLabelWidth = trackLength(settingLabelWidth, row.label)
+  end
+  for _, row in ipairs(settingRows) do
+    lines[#lines + 1] = padRight(row.label .. ":", settingLabelWidth + 1) .. " " .. row.value
+  end
 
   local extensions = GetExtensionList()
   local dlcList = {}
