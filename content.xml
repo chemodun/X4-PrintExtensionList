@@ -3,12 +3,12 @@
   id="ws_3770927339"
   name="Print Extension List"
   author="Chem O`Dun"
-  version="100"
-  date="2026-07-24"
+  version="101"
+  date="2026-07-31"
   save="false"
   sync="false"
   enabled="true"
-  lastupdate="1784919348"
-  description="Logs the game version, build number, and list of enabled DLCs/extensions with versions to the debug log on startup.">
+  lastupdate="1785523849"
+  description="Logs the game version, the current resolution and UI settings, and the list of enabled DLCs/extensions with versions to the debug log on startup.">
   <dependency version="800"></dependency>
 </content>
