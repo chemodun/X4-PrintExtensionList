@@ -8,10 +8,14 @@
   - Current screen resolution and the UI settings that affect menu layout: UI scale and menu width options, the engine UI scale values, and the Helper view size, `uiScale` and `scaleX`/`scaleY` results.
   - Every enabled DLC (id, name, version, date, location and other fields).
   - Every enabled extension/mod (id, name, author, source, version, date, location and other fields).
+- Flags likely broken mod installs right in the Options menu, using only texts the game already ships in every language:
+  - An extension whose folder is named like a Steam Workshop item (`ws_<number>`) while the game does not manage it as a subscription - typically a hand-copied or unsubscribed leftover that will never update.
+  - The same extension id installed into two different folders.
+  - A flagged extension gets the standard warning icon on `Settings` and on `Extensions`, a warning-coloured row in the extension list, and the details in the info panel beside it.
 
 ## Limitations
 
-- Debug-log only; there is no in-game UI, menu, or notification.
+- The report itself is debug-log only; the only in-game output is the warning marking in the Options menu.
 - No configuration - it always logs once per UI load.
 
 ## Requirements
@@ -37,6 +41,12 @@ Install and enable the extension. On the next game start look in the debug log f
 - [EGOSOFT](https://www.egosoft.com) - for the X series.
 
 ## Changelog
+
+### [1.02] - 2026-10-??
+
+- Added
+  - Options menu warning for an extension in a `ws_<number>` folder that the game does not manage as a Workshop subscription.
+  - Options menu warning for the same extension id installed in more than one folder.
 
 ### [1.01] - 2026-07-31
 

@@ -270,4 +270,90 @@ local function printExtensionList()
   end
 end
 
+-- Last path segment of a location: "ws_2042901274\" -> "ws_2042901274".
+local function folderName(location)
+  local trimmed = tostring(location or ""):gsub("[\\/]+$", "")
+  return trimmed:match("[^\\/]*$") or trimmed
+end
+
+-- Folder named like a Workshop item that the game does not manage as one: a hand-copied or
+-- unsubscribed leftover. A genuine subscription has isworkshop set and is not flagged.
+local function isStrayWorkshopFolder(ext)
+  return (not ext.isworkshop) and (folderName(ext.location):lower():match("^ws_%d+$") ~= nil)
+end
+
+-- "<label>: <value>" from page 1001 only, so the warnings stay localised without own t/ files.
+local function vanillaLabel(labelId, value)
+  return ReadText(1001, labelId) .. ReadText(1001, 120) .. " " .. tostring(value)
+end
+
+-- Warning / Steam Workshop Downloads / Subscribed / Updates / No / Location.
+local function strayWorkshopWarning(ext)
+  return vanillaLabel(12676, ReadText(1001, 4830))
+      .. "\n" .. vanillaLabel(4832, ReadText(1001, 2618))
+      .. "\n" .. vanillaLabel(4824, ReadText(1001, 2618))
+      .. "\n" .. vanillaLabel(2943, ext.location)
+end
+
+-- Warning / ID / Location, with one bullet per folder holding this id.
+local function duplicateIdWarning(ext, locations)
+  local warning = ReadText(1001, 12676)
+      .. "\n" .. vanillaLabel(4823, ext.id)
+      .. "\n" .. ReadText(1001, 2943) .. ReadText(1001, 120)
+  for _, location in ipairs(locations) do
+    warning = warning .. "\n- " .. location
+  end
+  return warning
+end
+
+-- Distinct enabled locations per id; more than one means the same mod is installed twice.
+local function locationsById(extensions)
+  local byId = {}
+  for _, ext in ipairs(extensions) do
+    if ext.enabled then
+      local key = tostring(ext.id):lower()
+      local entry = byId[key]
+      if entry == nil then
+        entry = { seen = {}, locations = {} }
+        byId[key] = entry
+      end
+      local location = tostring(ext.location or "")
+      if not entry.seen[location:lower()] then
+        entry.seen[location:lower()] = true
+        entry.locations[#entry.locations + 1] = location
+      end
+    end
+  end
+  return byId
+end
+
+-- Sets warning/warningtext in place, leaving an entry the engine already flagged alone.
+local function annotateInstallWarnings(extensions)
+  local byId = locationsById(extensions)
+  for _, ext in ipairs(extensions) do
+    if ext.enabled and (not ext.warning) then
+      local locations = byId[tostring(ext.id):lower()].locations
+      if #locations > 1 then
+        ext.warning = true
+        ext.warningtext = duplicateIdWarning(ext, locations)
+      elseif isStrayWorkshopFolder(ext) then
+        ext.warning = true
+        ext.warningtext = strayWorkshopWarning(ext)
+      end
+    end
+  end
+end
+
+-- The options menu reads warning/warningtext off each GetExtensionList() result, so annotating
+-- it is the whole feature. Sentinel: a re-created menus environment must not stack wrappers.
+if (type(GetExtensionList) == "function") and (not __PRINT_EXTENSION_LIST_INSTALL_WARNINGS) then
+  __PRINT_EXTENSION_LIST_INSTALL_WARNINGS = true
+  local baseGetExtensionList = GetExtensionList
+  GetExtensionList = function(...)
+    local extensions = baseGetExtensionList(...)
+    pcall(annotateInstallWarnings, extensions)
+    return extensions
+  end
+end
+
 printExtensionList()
