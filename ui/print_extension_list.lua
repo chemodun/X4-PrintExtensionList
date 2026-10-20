@@ -17,6 +17,257 @@ for _, declaration in ipairs({
   pcall(ffi.cdef, declaration)
 end
 
+-- Engine logger locator, kept identical to lua_log_api so both share the __LUA_LOG_API_ENGINE record.
+local P = ffi.typeof("uint8_t*")
+local RECORD_VERSION = 2
+local CATEGORY, CATEGORY_VERBOSE = "UI", "UI_Verbose"
+-- namesAt only accepts a table whose entry 0 is "General"
+local CATEGORY_GENERAL = 0
+local LEVEL_INFO = 0
+
+-- exports that call the engine error wrapper early in their body; the first three are declared by ui/widget,
+-- which loads before any addon. Never cdef'd here: a second declaration breaks whichever file declares later.
+local ANCHORS = { "CopyToClipboard", "GetTextWidth", "GetConfigSetting", "ConvertStringTo64Bit" }
+
+-- engine error wrapper, identical in 8.00 and 9.00: core(*logger, fmt, va, category 0, level 2, nested 0);
+-- false = masked: rel32 of the logger global at 27, je offset at 35, rel32 of the core at 64
+---@type (integer|false)[]
+local WRAPPER = { 0x48, 0x89, 0x4c, 0x24, 0x08, 0x48, 0x89, 0x54, 0x24, 0x10, 0x4c, 0x89, 0x44, 0x24, 0x18,
+  0x4c, 0x89, 0x4c, 0x24, 0x20, 0x48, 0x83, 0xec, 0x38, 0x48, 0x8b, 0x05, false, false, false, false,
+  0x48, 0x85, 0xc0, 0x74, false, 0x48, 0x8b, 0xd1, 0xc6, 0x44, 0x24, 0x28, 0x00, 0x48, 0x8b, 0xc8,
+  0xc7, 0x44, 0x24, 0x20, 0x02, 0x00, 0x00, 0x00, 0x4c, 0x8d, 0x44, 0x24, 0x48, 0x45, 0x33, 0xc9,
+  0xe8, false, false, false, false }
+
+-- file-log formatter: cmp r8d,N; ja; movsxd rax,r8d; lea rbx,[category names]
+---@type (integer|false)[]
+local NAMES = { 0x41, 0x83, 0xf8, false, 0x77, false, 0x49, 0x63, 0xc0, 0x48, 0x8d, 0x1d, false, false, false, false }
+
+-- nil: not located yet, false: unavailable, table: located
+---@type table|false|nil
+local engine
+local currentBuild
+local va = ffi.new("const char*[1]")
+
+local function u16(p) return ffi.cast("uint16_t*", p)[0] end
+local function u32(p) return ffi.cast("uint32_t*", p)[0] end
+local function i32(p) return ffi.cast("int32_t*", p)[0] end
+local function hex(n) return string.format("0x%x", tonumber(n)) end
+
+local function match(p, bytes)
+  for k = 1, #bytes do
+    if bytes[k] and p[k - 1] ~= bytes[k] then return false end
+  end
+  return true
+end
+
+local function findAnchor()
+  for _, name in ipairs(ANCHORS) do
+    local ok, f = pcall(function() return C[name] end)
+    if ok and f ~= nil then return ffi.cast("uintptr_t", f) end
+  end
+  return nil
+end
+
+-- The exe image and its sections as RVA ranges: to = the file-backed part, vto = the whole section.
+local function mapImage(anchor)
+  -- the walk below the image would read unmapped memory in the native Linux build
+  if ffi.os ~= "Windows" then return nil, "not the Windows build" end
+  local a = anchor - anchor % 0x10000
+  local base
+  for _ = 1, 4096 do
+    local p = ffi.cast(P, a)
+    if p[0] == 0x4d and p[1] == 0x5a and u32(p + i32(p + 0x3c)) == 0x4550 then
+      base = p
+      break
+    end
+    a = a - 0x10000
+  end
+  if not base then return nil, "image base not found" end
+  local pe = base + i32(base + 0x3c)
+  local opt = pe + 24
+  local img = { base = base, sec = {} }
+  -- timestamp, checksum, image size: what a cached result is tied to
+  img.id = string.format("%x-%x-%x", u32(pe + 8), u32(opt + 64), u32(opt + 56))
+  -- exception directory: every function's start and end, sorted
+  img.pdata, img.pdataCount = u32(opt + 112 + 3 * 8), math.floor(u32(opt + 112 + 3 * 8 + 4) / 12)
+  local s = opt + u16(pe + 20)
+  for i = 0, u16(pe + 6) - 1 do
+    local h = s + i * 40
+    local n = {}
+    for k = 0, 7 do
+      if h[k] ~= 0 then n[#n + 1] = string.char(h[k]) end
+    end
+    local from, vsize, raw = u32(h + 12), u32(h + 8), u32(h + 16)
+    img.sec[table.concat(n)] = { from = from, to = from + math.min(vsize, raw), vto = from + vsize }
+  end
+  if not (img.sec[".text"] and img.sec[".rdata"] and img.sec[".data"]) then
+    return nil, "image sections missing"
+  end
+  if img.pdataCount == 0 then return nil, "no exception directory" end
+  img.anchor = tonumber(anchor - ffi.cast("uintptr_t", base))
+  return img
+end
+
+local function inSection(sec, rva, len)
+  return rva >= sec.from and rva + (len or 8) <= sec.to
+end
+
+-- The start of the function containing rva, from .pdata, or nil.
+local function functionOf(img, rva)
+  local lo, hi = 0, img.pdataCount - 1
+  while lo <= hi do
+    local mid = math.floor((lo + hi) / 2)
+    local entry = img.base + img.pdata + mid * 12
+    local from, to = u32(entry), u32(entry + 4)
+    if rva < from then
+      hi = mid - 1
+    elseif rva >= to then
+      lo = mid + 1
+    else
+      return from
+    end
+  end
+end
+
+local function cString(img, rva, max)
+  local rd, b = img.sec[".rdata"], img.base
+  local n = 0
+  while n < max do
+    if not inSection(rd, rva + n, 1) then return nil end
+    local c = b[rva + n]
+    if c == 0 then break end
+    if c < 0x20 or c > 0x7e then return nil end
+    n = n + 1
+  end
+  if n == 0 or n == max then return nil end
+  return ffi.string(b + rva, n)
+end
+
+-- logger global and core function RVAs when rva is the error wrapper, or nil
+local function wrapperAt(img, rva)
+  if not inSection(img.sec[".text"], rva, #WRAPPER) or functionOf(img, rva) ~= rva then return nil end
+  if not match(img.base + rva, WRAPPER) then return nil end
+  local logger = rva + 31 + i32(img.base + rva + 27)
+  local data = img.sec[".data"]
+  if logger < data.from or logger + 8 > data.vto then return nil end
+  local core = rva + #WRAPPER + i32(img.base + rva + 64)
+  if functionOf(img, core) ~= core then return nil end
+  return logger, core
+end
+
+-- the category names table at o: its RVA and the indexes of CATEGORY and CATEGORY_VERBOSE (nil if absent), or nil
+local function namesAt(img, o)
+  if not inSection(img.sec[".text"], o, #NAMES) or not match(img.base + o, NAMES) then return nil end
+  local tableRva = o + #NAMES + i32(img.base + o + 12)
+  local count = img.base[o + 3] + 1
+  if not inSection(img.sec[".rdata"], tableRva, count * 8) then return nil end
+  local entries = ffi.cast("uint64_t*", img.base + tableRva)
+  local imageBase = ffi.cast("uintptr_t", img.base)
+  local index, verbose
+  for i = 0, count - 1 do
+    local name = cString(img, tonumber(entries[i] - imageBase), 64)
+    if not name or (i == 0 and name ~= "General") then return nil end
+    if name == CATEGORY then index = i end
+    if name == CATEGORY_VERBOSE then verbose = i end
+  end
+  if index then return tableRva, index, verbose end
+end
+
+local function search(img, build)
+  local wrapper, logger, core
+  for o = img.anchor, img.anchor + 0x200 do
+    if img.base[o] == 0xe8 and inSection(img.sec[".text"], o, 5) then
+      local t = o + 5 + i32(img.base + o + 1)
+      logger, core = wrapperAt(img, t)
+      if logger then
+        wrapper = t
+        break
+      end
+    end
+  end
+  if not wrapper then return { build = build, found = false, reason = "engine error wrapper not found from " .. hex(img.anchor) } end
+  -- the file-log formatter sits in the same unit as the wrapper
+  for o = wrapper, wrapper + 0x1000 do
+    if img.base[o] == 0x41 and img.base[o + 1] == 0x83 then
+      local tableRva, index, verbose = namesAt(img, o)
+      if tableRva then
+        return { build = build, found = true, wrapper = wrapper, logger = logger, core = core, names = o, category = index, verbose = verbose }
+      end
+    end
+  end
+  return { build = build, found = false, reason = "log category " .. CATEGORY .. " not found" }
+end
+
+local function verifyCached(img, c)
+  local logger, core = wrapperAt(img, c.wrapper)
+  if logger ~= c.logger or core ~= c.core then return false end
+  local _, index, verbose = namesAt(img, c.names)
+  return index == c.category and verbose == c.verbose
+end
+
+local function store(record)
+  if record then record.v = RECORD_VERSION end
+  ---@diagnostic disable-next-line: global-in-non-module
+  __LUA_LOG_API_ENGINE = record
+  -- declared by vanilla addons; one that has not loaded yet only delays the write to the next uidata save
+  pcall(function() C.SaveUIUserData() end)
+end
+
+-- Returns a located engine, nil to retry on the next write (no anchor declared yet), or false and the reason.
+---@return table|false|nil, string?
+local function detect()
+  local anchor = findAnchor()
+  if not anchor then return nil end
+  local img, why = mapImage(anchor)
+  if not img then return false, why end
+  local build = GetVersionString() .. " " .. img.id
+  currentBuild = build
+  local c = __LUA_LOG_API_ENGINE
+  if type(c) ~= "table" or c.build ~= build or c.v ~= RECORD_VERSION then c = nil end
+  if c and not c.found then return false, "cached: " .. tostring(c.reason) end
+  -- a crash while reading leaves this record behind, so the build is not read again
+  store({ build = build, found = false, reason = "the game stopped while the engine logger was searched" })
+  if not (c and verifyCached(img, c)) then
+    c = search(img, build)
+  end
+  store(c)
+  if not c.found then return false, "searched: " .. tostring(c.reason) end
+  return {
+    logger = ffi.cast("void**", img.base + c.logger),
+    core = ffi.cast("void(*)(void*, const char*, void*, int32_t, int32_t, uint8_t)", img.base + c.core),
+  }
+end
+
+local function locate()
+  local ok, result, reason = pcall(detect)
+  if not ok then
+    reason = "error: " .. tostring(result)
+    if currentBuild then pcall(store, { build = currentBuild, found = false, reason = reason }) end
+    engine = false
+  else
+    engine = result
+  end
+  if engine == false then
+    DebugError("PrintExtensionList: engine logger unavailable (" .. tostring(reason) .. "), writing through DebugError instead")
+  end
+end
+
+-- One "[General] <time> <text>" line; DebugError where the engine logger is not located.
+local function logInfo(text)
+  text = tostring(text)
+  if engine == nil then locate() end
+  if engine then
+    local logger = engine.logger[0]
+    if logger ~= nil then
+      va[0] = text
+      engine.core(logger, "%s", va, CATEGORY_GENERAL, LEVEL_INFO, 0)
+      va[0] = nil
+      return
+    end
+  end
+  DebugError(text)
+end
+
 -- Splits a pure-digit string into 2-digit groups counted from the right, leftmost group 1-2 digits.
 local function splitDigitsIntoGroups(digits)
   local groups = {}
@@ -266,7 +517,7 @@ local function printExtensionList()
   end
 
   for _, line in ipairs(lines) do
-    DebugError("PrintExtensionList: " .. line)
+    logInfo("PrintExtensionList: " .. line)
   end
 end
 

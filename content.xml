@@ -3,12 +3,12 @@
   id="ws_3770927339"
   name="Print Extension List"
   author="Chem O`Dun"
-  version="101"
-  date="2026-07-31"
+  version="102"
+  date="2026-10-20"
   save="false"
   sync="false"
   enabled="true"
-  lastupdate="1785523849"
-  description="Logs the game version, the current resolution and UI settings, and the list of enabled DLCs/extensions with versions to the debug log on startup.">
+  lastupdate="1792527474"
+  description="Logs the game version, the current resolution and UI settings, and the list of enabled DLCs/extensions with versions to the debug log on startup, and flags likely broken mod installs in the Options menu.">
   <dependency version="800"></dependency>
 </content>

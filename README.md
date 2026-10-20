@@ -27,9 +27,13 @@
 - **Steam Workshop** - [Print Extension List](https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339)
 - **Nexus Mods** - [Print Extension List](https://www.nexusmods.com/x4foundations/mods/2191)
 
+## Save state
+
+**No** (removing the extension does not break saves).
+
 ## Usage
 
-Install and enable the extension. On the next game start look in the debug log for lines starting with prefix `PrintExtensionList:`.
+Install and enable the extension. On the next game start look in the debug log for `[General]` lines containing the prefix `PrintExtensionList:`.
 
 ## Credits
 
@@ -42,11 +46,13 @@ Install and enable the extension. On the next game start look in the debug log f
 
 ## Changelog
 
-### [1.02] - 2026-10-??
+### [1.02] - 2026-10-20
 
 - Added
   - Options menu warning for an extension in a `ws_<number>` folder that the game does not manage as a Workshop subscription.
   - Options menu warning for the same extension id installed in more than one folder.
+- Changed
+  - Report lines are written as plain `[General]` info lines, without the `=====` separators and the `=ERROR=` tag.
 
 ### [1.01] - 2026-07-31
 
