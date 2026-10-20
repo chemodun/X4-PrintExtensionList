@@ -31,9 +31,13 @@
 [*] [b]Steam Workshop[/b] - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339]Print Extension List[/url]
 [*] [b]Nexus Mods[/b] - [url=https://www.nexusmods.com/x4foundations/mods/2191]Print Extension List[/url]
 [/list]
+[size=130][u]Save state[/u][/size]
+
+[b]No[/b] (removing the extension does not break saves).
+
 [size=130][u]Usage[/u][/size]
 
-Install and enable the extension. On the next game start look in the debug log for lines starting with prefix [b]PrintExtensionList:[/b].
+Install and enable the extension. On the next game start look in the debug log for [b][General][/b] lines containing the prefix [b]PrintExtensionList:[/b].
 
 [size=130][u]Credits[/u][/size]
 [list]
@@ -46,12 +50,16 @@ Install and enable the extension. On the next game start look in the debug log f
 [/list]
 [size=130][u]Changelog[/u][/size]
 
-[size=125][u][1.02] - 2026-10-??[/u][/size]
+[size=125][u][1.02] - 2026-10-20[/u][/size]
 [list]
 [*] Added
 [list]
 [*] Options menu warning for an extension in a [b]ws_<number>[/b] folder that the game does not manage as a Workshop subscription.
 [*] Options menu warning for the same extension id installed in more than one folder.
+[/list]
+[*] Changed
+[list]
+[*] Report lines are written as plain [b][General][/b] info lines, without the [b]=====[/b] separators and the [b]=ERROR=[/b] tag.
 [/list]
 [/list]
 [size=125][u][1.01] - 2026-07-31[/u][/size]
