@@ -5,7 +5,7 @@
 [*] Mod developers can include this as a dependency, allowing users to easily export their mod list to the debug log.
 [*] On UI startup, writes a report to the debug log containing:
 [list]
-[*] Game version.
+[*] Game version, platform (operating system, processor architecture) and the identifier of the exact game executable, which tells the Steam, GOG and Linux builds of one version apart.
 [*] Current screen resolution and the UI settings that affect menu layout: UI scale and menu width options, the engine UI scale values, and the Helper view size, [b]uiScale[/b] and [b]scaleX[/b]/[b]scaleY[/b] results.
 [*] Every enabled DLC (id, name, version, date, location and other fields).
 [*] Every enabled extension/mod (id, name, author, source, version, date, location and other fields).
@@ -37,7 +37,7 @@
 
 [size=3][u][b]Usage[/b][/u][/size]
 
-Install and enable the extension. On the next game start look in the debug log for [b][General][/b] lines containing the prefix [b]PrintExtensionList:[/b].
+Install and enable the extension. On the next game start look in the debug log for [b][General][/b] lines containing the prefix [b]PrintExtensionList:[/b]. This works with the Windows game (also on Linux through Proton or Wine) and the native Linux build.
 
 [size=3][u][b]Credits[/b][/u][/size]
 [list]
@@ -50,6 +50,14 @@ Install and enable the extension. On the next game start look in the debug log f
 [/list]
 [size=3][u][b]Changelog[/b][/u][/size]
 
+[size=3][u][i][1.03] - 2026-11-17[/i][/u][/size]
+[list]
+[*] Added
+[list]
+[*] Plain [b][General][/b] report lines on the native Linux build too.
+[*] Platform and game executable identifier in the [b]Game Data[/b] section of the report.
+[/list]
+[/list]
 [size=3][u][i][1.02] - 2026-10-20[/i][/u][/size]
 [list]
 [*] Added
