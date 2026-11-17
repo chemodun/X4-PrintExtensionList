@@ -4,7 +4,7 @@
 
 - Mod developers can include this as a dependency, allowing users to easily export their mod list to the debug log.
 - On UI startup, writes a report to the debug log containing:
-  - Game version.
+  - Game version, platform (operating system, processor architecture) and the identifier of the exact game executable, which tells the Steam, GOG and Linux builds of one version apart.
   - Current screen resolution and the UI settings that affect menu layout: UI scale and menu width options, the engine UI scale values, and the Helper view size, `uiScale` and `scaleX`/`scaleY` results.
   - Every enabled DLC (id, name, version, date, location and other fields).
   - Every enabled extension/mod (id, name, author, source, version, date, location and other fields).
@@ -33,7 +33,7 @@
 
 ## Usage
 
-Install and enable the extension. On the next game start look in the debug log for `[General]` lines containing the prefix `PrintExtensionList:`.
+Install and enable the extension. On the next game start look in the debug log for `[General]` lines containing the prefix `PrintExtensionList:`. This works with the Windows game (also on Linux through Proton or Wine) and the native Linux build.
 
 ## Credits
 
@@ -45,6 +45,12 @@ Install and enable the extension. On the next game start look in the debug log f
 - [EGOSOFT](https://www.egosoft.com) - for the X series.
 
 ## Changelog
+
+### [1.03] - 2026-11-17
+
+- Added
+  - Plain `[General]` report lines on the native Linux build too.
+  - Platform and game executable identifier in the `Game Data` section of the report.
 
 ### [1.02] - 2026-10-20
 
